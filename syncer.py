@@ -45,6 +45,7 @@ if __name__ == '__main__':
     bucket = namespace.bucket
     dir = namespace.dir + '/'
     timeZone = reference.LocalTimezone()
+    updateDeltaTime = datetime.timedelta(seconds=1)
 
     # Initialize minioClient with an endpoint and access/secret keys.
     minioClient = Minio(namespace.s3,
@@ -73,7 +74,7 @@ if __name__ == '__main__':
 
     # synchronize files
     while True:
-        time.sleep(1)
+        time.sleep(2)
         # get all files in directory in this moment
         filesNow = set(traverseDir(dir))
         # get all objects in bucket in this moment
@@ -89,18 +90,16 @@ if __name__ == '__main__':
                 fileTime = os.path.getatime(fileName)
                 fileLastModified = datetime.datetime.fromtimestamp(fileTime)
                 fileLastModified = fileLastModified.replace(tzinfo=timeZone)
-                fileLastModified = fileLastModified.replace(microsecond=0)
                 # get fileLastModified Time
                 objectLastModified = object.last_modified
-                objectLastModified = objectLastModified.replace(microsecond=0)
-                if fileLastModified > objectLastModified:
+                if fileLastModified - objectLastModified > updateDeltaTime:
                     minioClient.fput_object(bucket, objectName, fileName)
-                elif fileLastModified < objectLastModified:
+                elif objectLastModified - fileLastModified > updateDeltaTime:
                     minioClient.fget_object(bucket, objectName, fileName)
 
         # check changes objects in bucket
         for newObject in objectsNow - objectsOld:
-            if not dir + deleteObject in filesNow:
+            if not dir + newObject in filesNow:
                 minioClient.fget_object(bucket, newObject, dir + newObject)
         for deleteObject in objectsOld - objectsNow:
             if dir + deleteObject in filesNow:
@@ -109,7 +108,7 @@ if __name__ == '__main__':
 
         # check changes files in folder
         for newFile in filesNow - filesOld:
-            if not deleteFile[len(dir)::] in objectsNow:
+            if not newFile[len(dir)::] in objectsNow:
                 minioClient.fput_object(bucket, newFile[len(dir)::], newFile)
         for deleteFile in filesOld - filesNow:
             if deleteFile[len(dir)::] in objectsNow:
