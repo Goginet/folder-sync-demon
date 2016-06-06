@@ -59,17 +59,17 @@ if __name__ == '__main__':
     except ResponseError as err:
         print(err)
 
-    # load all files from machine to server
-    filesOld = set(traverseDir(dir))
-    for file in filesOld:
-        minioClient.fput_object(bucket, file[len(dir)::], file)
-
     # load all objects from server to machine
     objects = list(minioClient.list_objects(bucket, prefix='', recursive=True))
     for object in objects:
         objectName = object.object_name.encode('utf-8')
         minioClient.fget_object(bucket, objectName, dir + objectName)
     objectsOld = getSetObjects(objects)
+
+    # load all files from machine to server
+    filesOld = set(traverseDir(dir))
+    for file in filesOld:
+        minioClient.fput_object(bucket, file[len(dir)::], file)
 
     # synchronize files
     while True:
