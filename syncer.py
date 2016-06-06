@@ -66,10 +66,11 @@ if __name__ == '__main__':
         minioClient.fget_object(bucket, objectName, dir + objectName)
     objectsOld = getSetObjects(objects)
 
-    # load all files from machine to server
+    # delete files in machine wich is not found in the server
     filesOld = set(traverseDir(dir))
     for file in filesOld:
-        minioClient.fput_object(bucket, file[len(dir)::], file)
+        if not file[len(dir)::] in objectsOld:
+            os.remove(file)
 
     # synchronize files
     while True:
